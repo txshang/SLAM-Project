@@ -67,8 +67,8 @@ Imu::Imu(){
     ros::NodeHandle ph_nh_("~");
     string ttyusb_port;
     ph_nh_.param<string>("ttyusb_port",ttyusb_port,string("/dev/ttyUSB0"));
-    imu_pub = ph_nh_.advertise<sensor_msgs::Imu>("/imu", 1000);
-    odom_pub = ph_nh_.advertise<nav_msgs::Odometry>("odom", 1000);
+    imu_pub = ph_nh_.advertise<sensor_msgs::Imu>("/imu", 1000, false);
+    odom_pub = ph_nh_.advertise<nav_msgs::Odometry>("/odom", 1000, false);
     try
     {
         ser.setPort(ttyusb_port.c_str());
@@ -97,9 +97,9 @@ void Imu::update(float linear_acc_x, float linear_acc_y, float linear_acc_z, ros
     //Fill the IMU message
     //欧拉角转四元数
     geometry_msgs::Quaternion odom_quat;
-    pitch = DEG2RAD(pitch);
-    roll = DEG2RAD(roll);
-    yaw = DEG2RAD(yaw);
+    pitch = DEG2RAD(-pitch);
+    roll = DEG2RAD(-roll);
+    yaw = DEG2RAD(-yaw);
     odom_quat = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);//返回四元数
     sensor_msgs::Imu imu_data;
     // Fill orientation quaternion
@@ -190,17 +190,17 @@ int main(int argc, char** argv)
 {
     ros::init(argc,argv,"imu_read");
     ros::NodeHandle n;
-    ros::Rate loop_rate(100);
+    ros::Rate loop_rate(50);
     Imu my_imu;
     uint32_t last_time ;
-    uint8_t imu_data[1000]; //定义串口数据存放数组
+    uint8_t imu_data[100]; //定义串口数据存放数组
     Vector3 tmp_P = Vector3(0,0,0);//位姿
     Vector3 tmp_V = Vector3(0,0,0);//速度
     while(ros::ok()){
         if(ser.available()){
             ROS_INFO_STREAM("serial available: "<<ser.available());
             ser.read(imu_data,ser.available());
-            for(int i =0;i<1000;i++){
+            for(int i =0;i<100;i++){
                 if(imu_data[i]==0x03)
                 {
                     if(imu_data[i+1]==0x50)
@@ -222,14 +222,14 @@ int main(int argc, char** argv)
                         uint32_t linear_z = comb32(imu_data[i+14],imu_data[i+15],imu_data[i+16],imu_data[i+17]);
                         my_imu.linear_acc_z = uint32_float(linear_z);
                         ROS_INFO_STREAM("linear_acc_z: "<<my_imu.linear_acc_z);
-        
+                        /*
                         my_imu.angular_acc_x = uint32_float((imu_data[i+18],imu_data[i+19],imu_data[i+20],imu_data[i+21]));
                         ROS_INFO_STREAM("angular_acc_x: "<<my_imu.angular_acc_x);
                         my_imu.angular_acc_x = uint32_float(comb32(imu_data[i+22],imu_data[i+23],imu_data[i+24],imu_data[i+25]));
                         ROS_INFO_STREAM("angular_acc_y: "<<my_imu.angular_acc_y);
                         my_imu.angular_acc_x = uint32_float(comb32(imu_data[i+26],imu_data[i+27],imu_data[i+28],imu_data[i+29]));
                         ROS_INFO_STREAM("angular_acc_z: "<<my_imu.angular_acc_z);
-                        
+                        */
                         uint32_t pitch_32 = comb32(imu_data[i+30],imu_data[i+31],imu_data[i+32],imu_data[i+33]);
                         my_imu.pitch = uint32_float(pitch_32);
                         //ROS_INFO_STREAM("pitch: "<<my_imu.pitch);
